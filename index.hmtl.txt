@@ -45,7 +45,7 @@
 <div class="section">
   <h2>Step 1 — Convert your DICOM scans</h2>
   <p>Click the button below to open the converter. Upload your DICOM folder (as a ZIP file) and download the generated <b>output_volume.nii.gz</b> file.</p>
-  <a class="button" href="YOUR_COLAB_LINK_HERE" target="_blank">Open Colab Converter</a>
+  <a class="button" href="https://colab.research.google.com/drive/1rc5Wy34BtcNj91nLcYLr4fP94PxF96T-?usp=sharing" target="_blank">Open Colab Converter</a>
 </div>
 
 <div class="section">
@@ -69,4 +69,5 @@ document.getElementById("fileInput").addEventListener("change", function(event) 
 </script>
 
 </body>
+
 </html>
