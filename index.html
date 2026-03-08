@@ -1,33 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>3D Medical Scan Viewer</title>
+  <title>NIfTI Viewer</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 40px;
       max-width: 900px;
-      line-height: 1.6;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .section {
-      margin-bottom: 40px;
-      padding: 20px;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      background: #fafafa;
-    }
-    .button {
-      display: inline-block;
-      padding: 12px 20px;
-      background: #007bff;
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
-      font-size: 16px;
     }
     #viewer {
       width: 100%;
@@ -40,62 +19,71 @@
 </head>
 <body>
 
-<h1>3D MRI/CT Scan Viewer</h1>
+<h1>NIfTI Viewer</h1>
 
-<div class="section">
-  <h2>Step 1 — Convert your DICOM scans</h2>
-  <p>Click the button below to open the converter. Upload your DICOM folder (as a ZIP file) and download the generated <b>output_volume.nii.gz</b> file.</p>
-  <a class="button" href="https://colab.research.google.com/drive/1rc5Wy34BtcNj91nLcYLr4fP94PxF96T-?usp=sharing" target="_blank">Open Colab Converter</a>
-</div>
+<input type="file" id="fileInput" />
 
-<div class="section">
-  <h2>Step 2 — Upload your 3D file</h2>
-  <p>Once you have <b>output_volume.nii.gz</b>, upload it below to view the 3D model.</p>
-  <input type="file" id="fileInput" />
-</div>
+<div id="viewer"></div>
 
-<div class="section">
-  <h2>Step 3 — View your 3D model</h2>
-  <div id="viewer" style="width:100%; height:600px;"></div>
-</div>
+<script src="https://unpkg.com/vtk.js"></script>
+<script src="https://unpkg.com/nifti-reader-js"></script>
 
-<script src="https://unpkg.com/@kitware/volview/dist/volview.js"></script>
 <script>
-  const viewerElement = document.getElementById("viewer");
-  const app = new window.volview.VolViewApp(viewerElement);
+  const container = document.getElementById("viewer");
 
-  // Load a known-good 3D model so you can confirm it works
-  app.loadVolumeFromUrl(
-    "https://kitware.github.io/vtk-js/data/volume/headsq.vti",
-    "headsq.vti"
-  );
+  const renderWindow = vtk.Rendering.Core.vtkRenderWindow.newInstance();
+  const renderer = vtk.Rendering.Core.vtkRenderer.newInstance();
+  const openglRenderWindow = vtk.Rendering.OpenGL.vtkRenderWindow.newInstance();
+  const interactor = vtk.Rendering.Core.vtkRenderWindowInteractor.newInstance();
 
-  // Then allow uploads
+  renderWindow.addRenderer(renderer);
+  renderWindow.addView(openglRenderWindow);
+  interactor.setView(openglRenderWindow);
+  interactor.initialize();
+  interactor.bindEvents(container);
+
+  openglRenderWindow.setContainer(container);
+  openglRenderWindow.setSize(container.clientWidth, container.clientHeight);
+
   document.getElementById("fileInput").addEventListener("change", async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    const fileURL = URL.createObjectURL(file);
-    await app.loadVolumeFromUrl(fileURL, file.name);
-  });
-</script>
 
-  // 1) Auto-load a known-good 3D volume so you can SEE it works
-  (async () => {
-    await app.loadVolumeFromUrl(
-      "https://kitware.github.io/vtk-js/data/volume/headsq.vti",
-      "headsq.vti"
-    );
-  })();
+    const arrayBuffer = await file.arrayBuffer();
 
-  // 2) Then allow user uploads
-  document.getElementById("fileInput").addEventListener("change", async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const fileURL = URL.createObjectURL(file);
-    await app.loadVolumeFromUrl(fileURL, file.name);
+    if (!nifti.isNIFTI(arrayBuffer)) {
+      alert("Not a NIfTI file");
+      return;
+    }
+
+    const header = nifti.readHeader(arrayBuffer);
+    const image = nifti.readImage(header, arrayBuffer);
+
+    const dims = header.dims.slice(1, 4);
+    const spacing = header.pixDims.slice(1, 4);
+
+    const dataArray = vtk.Common.Core.vtkDataArray.newInstance({
+      numberOfComponents: 1,
+      values: new Float32Array(image),
+    });
+
+    const imageData = vtk.Common.DataModel.vtkImageData.newInstance();
+    imageData.setDimensions(...dims);
+    imageData.setSpacing(...spacing);
+    imageData.getPointData().setScalars(dataArray);
+
+    const mapper = vtk.Rendering.Core.vtkVolumeMapper.newInstance();
+    mapper.setInputData(imageData);
+
+    const actor = vtk.Rendering.Core.vtkVolume.newInstance();
+    actor.setMapper(mapper);
+
+    renderer.removeAllViewProps();
+    renderer.addVolume(actor);
+    renderer.resetCamera();
+    renderWindow.render();
   });
 </script>
 
 </body>
 </html>
-
