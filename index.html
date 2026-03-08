@@ -64,9 +64,10 @@ document.getElementById("fileInput").addEventListener("change", function(event) 
     const file = event.target.files[0];
     const viewer = document.getElementById("viewer");
     const url = URL.createObjectURL(file);
-    viewer.src = "https://kitware.github.io/volview/?fileToLoad=" + url;
+    viewer.src = "https://kitware.github.io/volview/?url=" + url;
 });
 </script>
 
 </body>
+
 </html>
